@@ -1,109 +1,82 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
-public class GameController : MonoBehaviour
+public class GameController
 {
-    [SerializeField] private float gridCellSize = 1f;
-    [SerializeField] private List<GameObject> terrainPrefabs;
-    [SerializeField] private GameObject player;
-
-    private List<List<GameObject>> grid;
     private Vector2Int characterPosition;
     private List<List<TerrainType>> map;
 
-    private void Start()
+    private GameView gameView;
+
+    public GameController(GameView view, MapBuilder mapBuilder)
     {
-        MapBuilder mapBuilder = new MapBuilder();
+        gameView = view;
+
         map = mapBuilder.GenerateMap();
         characterPosition = mapBuilder.GetStartPosition();
 
-        InitializeMap(map, characterPosition);
+        gameView.InitializeMap(map, characterPosition);
     }
 
-    private void Update()
+    public void MoveCharacterRight()
     {
-        if (Input.GetKeyDown(KeyCode.LeftArrow))
+        if (IsValidPosition(characterPosition.x + 1, characterPosition.y))
         {
-            var posibleNewPosition = new Vector2Int(characterPosition.x - 1, characterPosition.y);
-            if (posibleNewPosition.x >= 0 && map[posibleNewPosition.y][posibleNewPosition.x] != TerrainType.TREE)
-            {
-                characterPosition = posibleNewPosition;
-
-                GameObject gridCell = grid[characterPosition.y][characterPosition.x];
-                player.transform.SetParent(gridCell.transform);
-                player.transform.localPosition = Vector3.zero;
-
-                if (map[characterPosition.y][characterPosition.x] == TerrainType.FINISH)
-                    Debug.Log("YOU WIN!!!");
-            }
-        }
-        else if (Input.GetKeyDown(KeyCode.RightArrow))
-        {
-            var posibleNewPosition = new Vector2Int(characterPosition.x + 1, characterPosition.y);
-            if (posibleNewPosition.x < map[posibleNewPosition.y].Count && map[posibleNewPosition.y][posibleNewPosition.x] != TerrainType.TREE)
-            {
-                characterPosition = posibleNewPosition;
-
-                GameObject gridCell = grid[characterPosition.y][characterPosition.x];
-                player.transform.SetParent(gridCell.transform);
-                player.transform.localPosition = Vector3.zero;
-
-                if (map[characterPosition.y][characterPosition.x] == TerrainType.FINISH)
-                    Debug.Log("YOU WIN!!!");
-            }
-        }
-        else if (Input.GetKeyDown(KeyCode.UpArrow))
-        {
-            var posibleNewPosition = new Vector2Int(characterPosition.x, characterPosition.y + 1);
-            if (posibleNewPosition.y < map.Count && map[posibleNewPosition.y][posibleNewPosition.x] != TerrainType.TREE)
-           {
-                characterPosition = posibleNewPosition;
-
-                GameObject gridCell = grid[characterPosition.y][characterPosition.x];
-                player.transform.SetParent(gridCell.transform);
-                player.transform.localPosition = Vector3.zero;
-
-                if (map[characterPosition.y][characterPosition.x] == TerrainType.FINISH)
-                    Debug.Log("YOU WIN!!!");
-            }
-        }
-        else if (Input.GetKeyDown(KeyCode.DownArrow))
-        {
-            var posibleNewPosition = new Vector2Int(characterPosition.x, characterPosition.y - 1);
-            if (posibleNewPosition.y >= 0 && map[posibleNewPosition.y][posibleNewPosition.x] != TerrainType.TREE)
-           {
-                characterPosition = posibleNewPosition;
-
-                GameObject gridCell = grid[characterPosition.y][characterPosition.x];
-                player.transform.SetParent(gridCell.transform);
-                player.transform.localPosition = Vector3.zero;
-
-                if (map[characterPosition.y][characterPosition.x] == TerrainType.FINISH)
-                    Debug.Log("YOU WIN!!!");
-            }
+            MoveCharacterToPosition(characterPosition.x + 1, characterPosition.y);
         }
     }
 
-    public void InitializeMap(List<List<TerrainType>> map, Vector2Int characterPosition)
+    public void MoveCharacterLeft()
     {
-        grid = new List<List<GameObject>>();
-
-        for (var row = 0; row < map.Count; row++)
+        if (IsValidPosition(characterPosition.x - 1, characterPosition.y))
         {
-            var gridRow = new List<GameObject>();
-            for (var column = 0; column < map[row].Count; column++)
-            {
-                var terrainType = map[row][column];
-
-                var gridCell = Instantiate(terrainPrefabs[(int)terrainType], transform);
-                gridCell.transform.localPosition = new Vector3(column * gridCellSize, row * gridCellSize, 1);
-                gridRow.Add(gridCell);
-            }
-            grid.Add(gridRow);
+            MoveCharacterToPosition(characterPosition.x - 1, characterPosition.y);
         }
+    }
 
-        GameObject startGridCell = grid[characterPosition.y][characterPosition.x];
-        player.transform.SetParent(startGridCell.transform);
-        player.transform.localPosition = Vector3.zero;
+    public void MoveCharacterUp()
+    {
+        if (IsValidPosition(characterPosition.x, characterPosition.y + 1))
+        {
+            MoveCharacterToPosition(characterPosition.x, characterPosition.y + 1);
+        }
+    }
+
+    public void MoveCharacterDown()
+    {
+        if (IsValidPosition(characterPosition.x, characterPosition.y - 1))
+        {
+            MoveCharacterToPosition(characterPosition.x, characterPosition.y - 1);
+        }
+    }
+
+    private void MoveCharacterToPosition(int newX, int newY)
+    {
+        characterPosition = new Vector2Int(newX, newY);
+        gameView.MovePlayerToCell(characterPosition.x, characterPosition.y);
+        CheckIfWin();
+    }
+    private void CheckIfWin()
+    {
+        if (map[characterPosition.y][characterPosition.x] == TerrainType.FINISH)
+            gameView.ShowWinFeedback();
+    }
+
+    private bool IsValidPosition(int x, int y)
+    {
+        return PositionExistsInMap(x, y) && ThereIsNoTreeInPosition(x, y);
+    }
+
+    private bool ThereIsNoTreeInPosition(int x, int y)
+    {
+        return map[y][x] != TerrainType.TREE;
+    }
+
+    private bool PositionExistsInMap(int x, int y)
+    {
+        return y >= 0 &&
+               y < map.Count &&
+               x >= 0 &&
+               x < map[y].Count;
     }
 }
